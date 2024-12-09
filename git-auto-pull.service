@@ -1,0 +1,14 @@
+[Unit]
+Description=Git Auto Pull Service
+After=network.target
+
+[Service]
+Type=simple
+User=ilmalsalam
+WorkingDirectory=/home/isaffathir/Code/gitauto
+ExecStart=/usr/bin/python3 /home/isaffathir/Code/gitauto/git_auto_pull.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
