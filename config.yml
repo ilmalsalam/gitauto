@@ -1,9 +1,9 @@
 # Configuration for Git Auto Pull Service
-check_interval: 60  # Check every 5 minutes (in seconds)
+check_interval: 60  # Check every 1 minutes (in seconds)
 
 repositories:
-  - path: "/path/to/your/repo1"
-    branch: "develop"
+  - path: "/home/username/repo1"
+    branch: "master"
   # add more repositories
-  # - path: "/path/to/your/repo2"
-  #   branch: "development"
+  # - path: "/path/to/repo2"
+  #   branch: "main"

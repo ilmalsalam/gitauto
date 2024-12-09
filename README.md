@@ -12,17 +12,41 @@ pip install -r requirements.txt
 2. Configure your repositories:
 Edit `config.yml` and add your repository paths and branches:
 ```yaml
-check_interval: 300  # Check every 5 minutes
+check_interval: 60  # Check every 1 minute
 repositories:
   - path: "/path/to/your/repo"
     branch: "main"
 ```
 
-3. Set up the systemd service:
-```bash
-# Edit the service file to set your username
-sudo nano git-auto-pull.service
+3. Set up the service:
+Ada dua cara untuk menjalankan service ini:
 
+### 1. Sebagai Daemon Process (Direkomendasikan)
+```bash
+# Jalankan script sebagai daemon
+python3 git_auto_pull.py --daemon
+```
+
+Script akan berjalan di background dan log akan disimpan di `git_auto.log` dalam direktori yang sama.
+
+Untuk menghentikan service:
+```bash
+# Cari PID dari process
+ps aux | grep git_auto_pull.py
+
+# Matikan process
+kill <PID>  # ganti <PID> dengan nomor yang didapat
+```
+
+### 2. Sebagai Service Systemd (Opsional)
+
+1. Edit the service file to set your username
+```bash
+sudo nano git-auto-pull.service
+```
+
+2. Setup the systemd service:
+```bash
 # Copy the service file to systemd directory
 sudo cp git-auto-pull.service /etc/systemd/system/
 
