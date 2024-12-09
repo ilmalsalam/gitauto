@@ -88,31 +88,46 @@ File `config.yml`:
 - `repositories`: Daftar repository yang akan dimonitor
   - `path`: Path absolut ke repository
   - `branch`: Nama branch yang akan dimonitor
-  - `type`: Tipe repository ("nextjs" atau "standard")
-  - `pm2_ids`: (Untuk NextJS) List ID proses PM2 yang perlu di-restart [1, 2, dst]
-  - `build_command`: (Untuk NextJS) Perintah build yang akan dijalankan (default: "npm run build")
+  - `type`: (Opsional) Tipe repository - tulis "nextjs" untuk repository NextJS
+  - `pm2_ids`: List ID proses PM2 yang perlu di-restart [1, 2, dst]
+  - `build_command`: (Khusus NextJS) Perintah build yang akan dijalankan
 
-Contoh konfigurasi untuk NextJS repository:
+Contoh konfigurasi lengkap:
 ```yaml
+check_interval: 60  # Check setiap 1 menit
 repositories:
+  # Repository NextJS
   - path: "/home/username/nextjs-app"
     branch: "master"
     type: "nextjs"
     pm2_ids: [1, 2]
     build_command: "npm run build"
+  
+  # Repository Standard
+  - path: "/home/username/standard-app"
+    branch: "main"
+    pm2_ids: [3]
 ```
 
-## Fitur Khusus NextJS
+## Fitur PM2
 
-Untuk repository NextJS, script akan melakukan proses berikut ketika ada perubahan:
-1. Menghentikan proses PM2 yang ditentukan
-2. Menjalankan perintah build (npm run build)
-3. Menjalankan kembali proses PM2
+Script akan menangani proses PM2 untuk semua tipe repository:
 
-Jika terjadi error selama proses build:
+1. Untuk repository standard:
+   - Menghentikan proses PM2 yang ditentukan
+   - Melakukan git pull
+   - Menjalankan kembali proses PM2
+
+2. Untuk repository NextJS:
+   - Menghentikan proses PM2 yang ditentukan
+   - Melakukan git pull
+   - Menjalankan perintah build
+   - Menjalankan kembali proses PM2
+
+Jika terjadi error:
 - Error akan dicatat di log
-- Proses PM2 akan dicoba untuk dijalankan kembali
-- Anda dapat memeriksa detail error di file log
+- Proses PM2 akan otomatis dicoba untuk dijalankan kembali
+- Detail error dapat diperiksa di file log
 
 ## Troubleshooting
 

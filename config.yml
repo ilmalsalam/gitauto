@@ -8,6 +8,6 @@ repositories:
     pm2_ids: [1, 2]  # PM2 process IDs to manage
     build_command: "npm run build"  # Build command to run
   # add more repositories
-  # - path: "/path/to/repo2"
-  #   branch: "main"
-  #   type: "standard"  # Standard repo without build
+  - path: "/path/to/repo2"
+    branch: "main"
+    pm2_ids: [3]  # PM2 process IDs to manage for non-NextJS repo

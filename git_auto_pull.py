@@ -20,7 +20,46 @@ def load_config():
     with open('config.yml', 'r') as file:
         return yaml.safe_load(file)
 
-def git_pull(repo_path, branch):
+def handle_pm2_processes(pm2_ids, action="restart"):
+    """Handle PM2 processes with specified action (stop/start/restart)"""
+    try:
+        for pm2_id in pm2_ids:
+            logging.info(f"{action.capitalize()}ing PM2 process {pm2_id}")
+            subprocess.run(['pm2', action, str(pm2_id)], check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error during PM2 {action}: {str(e)}")
+        return False
+    except Exception as e:
+        logging.error(f"Unexpected error during PM2 {action}: {str(e)}")
+        return False
+
+def handle_nextjs_build(repo_path, pm2_ids, build_command):
+    try:
+        # Stop PM2 processes
+        handle_pm2_processes(pm2_ids, "stop")
+
+        # Run build command
+        logging.info(f"Running build command: {build_command}")
+        os.chdir(repo_path)
+        subprocess.run(build_command.split(), check=True)
+
+        # Start PM2 processes
+        handle_pm2_processes(pm2_ids, "start")
+
+        logging.info("NextJS build process completed successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error during build process: {str(e)}")
+        # Try to restart PM2 processes in case of failure
+        handle_pm2_processes(pm2_ids, "start")
+        return False
+    except Exception as e:
+        logging.error(f"Unexpected error during build: {str(e)}")
+        return False
+
+def handle_repository_update(repo_path, branch, repo_type, pm2_ids=None, build_command=None):
+    """Handle repository update including PM2 management"""
     try:
         # Change to repository directory
         os.chdir(repo_path)
@@ -32,51 +71,36 @@ def git_pull(repo_path, branch):
         current = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()
         remote = subprocess.check_output(['git', 'rev-parse', f'origin/{branch}']).decode().strip()
         
-        # If there are changes, pull them
+        # If there are changes, handle the update
         if current != remote:
             logging.info(f"Changes detected in {repo_path} on branch {branch}")
+            
+            # Stop PM2 processes if specified
+            if pm2_ids:
+                handle_pm2_processes(pm2_ids, "stop")
+            
+            # Pull changes
             subprocess.run(['git', 'checkout', branch], check=True)
             subprocess.run(['git', 'pull', 'origin', branch], check=True)
             logging.info(f"Successfully pulled changes for {repo_path} on branch {branch}")
+            
+            # Handle NextJS build if necessary
+            if repo_type == 'nextjs' and build_command:
+                logging.info("Running NextJS build process")
+                os.chdir(repo_path)
+                subprocess.run(build_command.split(), check=True)
+            
+            # Start PM2 processes if specified
+            if pm2_ids:
+                handle_pm2_processes(pm2_ids, "start")
+            
             return True
         return False
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Error during git operations: {str(e)}")
-        return False
     except Exception as e:
-        logging.error(f"Unexpected error: {str(e)}")
-        return False
-
-def handle_nextjs_build(repo_path, pm2_ids, build_command):
-    try:
-        # Stop PM2 processes
-        for pm2_id in pm2_ids:
-            logging.info(f"Stopping PM2 process {pm2_id}")
-            subprocess.run(['pm2', 'stop', str(pm2_id)], check=True)
-
-        # Run build command
-        logging.info(f"Running build command: {build_command}")
-        os.chdir(repo_path)
-        subprocess.run(build_command.split(), check=True)
-
-        # Start PM2 processes
-        for pm2_id in pm2_ids:
-            logging.info(f"Starting PM2 process {pm2_id}")
-            subprocess.run(['pm2', 'start', str(pm2_id)], check=True)
-
-        logging.info("NextJS build process completed successfully")
-        return True
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Error during build process: {str(e)}")
+        logging.error(f"Error handling repository update: {str(e)}")
         # Try to restart PM2 processes in case of failure
-        for pm2_id in pm2_ids:
-            try:
-                subprocess.run(['pm2', 'start', str(pm2_id)], check=True)
-            except:
-                logging.error(f"Failed to restart PM2 process {pm2_id}")
-        return False
-    except Exception as e:
-        logging.error(f"Unexpected error during build: {str(e)}")
+        if pm2_ids:
+            handle_pm2_processes(pm2_ids, "start")
         return False
 
 def daemonize():
@@ -127,16 +151,11 @@ def main():
             repo_path = repo['path']
             branch = repo['branch']
             repo_type = repo.get('type', 'standard')
+            pm2_ids = repo.get('pm2_ids', [])
+            build_command = repo.get('build_command')
             
             logging.info(f"Checking repository: {repo_path} on branch {branch}")
-            changes_pulled = git_pull(repo_path, branch)
-            
-            # Handle NextJS build if necessary
-            if changes_pulled and repo_type == 'nextjs':
-                pm2_ids = repo.get('pm2_ids', [])
-                build_command = repo.get('build_command', 'npm run build')
-                if pm2_ids:
-                    handle_nextjs_build(repo_path, pm2_ids, build_command)
+            handle_repository_update(repo_path, branch, repo_type, pm2_ids, build_command)
         
         time.sleep(check_interval)
 
