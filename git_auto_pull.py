@@ -48,6 +48,10 @@ def git_pull(repo_path, branch):
         return False
 
 def daemonize():
+    # Get the absolute path of the script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    log_file = os.path.join(script_dir, 'git_auto.log')
+
     # First fork (detaches from parent)
     try:
         pid = os.fork()
@@ -59,7 +63,7 @@ def daemonize():
         sys.exit(1)
 
     # Decouple from parent environment
-    os.chdir('/')
+    os.chdir(script_dir)  # Change to script directory instead of root
     os.umask(0)
     os.setsid()
 
@@ -78,7 +82,7 @@ def daemonize():
     sys.stderr.flush()
     with open('/dev/null', 'r') as f:
         os.dup2(f.fileno(), sys.stdin.fileno())
-    with open('git_auto.log', 'a') as f:
+    with open(log_file, 'a+') as f:
         os.dup2(f.fileno(), sys.stdout.fileno())
         os.dup2(f.fileno(), sys.stderr.fileno())
 
