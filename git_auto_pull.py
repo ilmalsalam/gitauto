@@ -47,6 +47,38 @@ def git_pull(repo_path, branch):
         logging.error(f"Unexpected error: {str(e)}")
         return False
 
+def handle_nextjs_build(repo_path, pm2_ids, build_command):
+    try:
+        # Stop PM2 processes
+        for pm2_id in pm2_ids:
+            logging.info(f"Stopping PM2 process {pm2_id}")
+            subprocess.run(['pm2', 'stop', str(pm2_id)], check=True)
+
+        # Run build command
+        logging.info(f"Running build command: {build_command}")
+        os.chdir(repo_path)
+        subprocess.run(build_command.split(), check=True)
+
+        # Start PM2 processes
+        for pm2_id in pm2_ids:
+            logging.info(f"Starting PM2 process {pm2_id}")
+            subprocess.run(['pm2', 'start', str(pm2_id)], check=True)
+
+        logging.info("NextJS build process completed successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error during build process: {str(e)}")
+        # Try to restart PM2 processes in case of failure
+        for pm2_id in pm2_ids:
+            try:
+                subprocess.run(['pm2', 'start', str(pm2_id)], check=True)
+            except:
+                logging.error(f"Failed to restart PM2 process {pm2_id}")
+        return False
+    except Exception as e:
+        logging.error(f"Unexpected error during build: {str(e)}")
+        return False
+
 def daemonize():
     # Get the absolute path of the script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -94,9 +126,17 @@ def main():
         for repo in config['repositories']:
             repo_path = repo['path']
             branch = repo['branch']
+            repo_type = repo.get('type', 'standard')
             
             logging.info(f"Checking repository: {repo_path} on branch {branch}")
-            git_pull(repo_path, branch)
+            changes_pulled = git_pull(repo_path, branch)
+            
+            # Handle NextJS build if necessary
+            if changes_pulled and repo_type == 'nextjs':
+                pm2_ids = repo.get('pm2_ids', [])
+                build_command = repo.get('build_command', 'npm run build')
+                if pm2_ids:
+                    handle_nextjs_build(repo_path, pm2_ids, build_command)
         
         time.sleep(check_interval)
 

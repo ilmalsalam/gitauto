@@ -81,6 +81,39 @@ tail -f git_auto_pull.log
   - `path`: Absolute path to the repository
   - `branch`: Branch name to monitor
 
+## Konfigurasi
+
+File `config.yml`:
+- `check_interval`: Interval pengecekan dalam detik
+- `repositories`: Daftar repository yang akan dimonitor
+  - `path`: Path absolut ke repository
+  - `branch`: Nama branch yang akan dimonitor
+  - `type`: Tipe repository ("nextjs" atau "standard")
+  - `pm2_ids`: (Untuk NextJS) List ID proses PM2 yang perlu di-restart [1, 2, dst]
+  - `build_command`: (Untuk NextJS) Perintah build yang akan dijalankan (default: "npm run build")
+
+Contoh konfigurasi untuk NextJS repository:
+```yaml
+repositories:
+  - path: "/home/username/nextjs-app"
+    branch: "master"
+    type: "nextjs"
+    pm2_ids: [1, 2]
+    build_command: "npm run build"
+```
+
+## Fitur Khusus NextJS
+
+Untuk repository NextJS, script akan melakukan proses berikut ketika ada perubahan:
+1. Menghentikan proses PM2 yang ditentukan
+2. Menjalankan perintah build (npm run build)
+3. Menjalankan kembali proses PM2
+
+Jika terjadi error selama proses build:
+- Error akan dicatat di log
+- Proses PM2 akan dicoba untuk dijalankan kembali
+- Anda dapat memeriksa detail error di file log
+
 ## Troubleshooting
 
 1. Make sure the user running the service has proper Git credentials and permissions
