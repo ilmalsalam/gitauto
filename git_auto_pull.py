@@ -42,29 +42,7 @@ def handle_nextjs_build(repo_path, pm2_ids, build_command):
         # Run build command
         logging.info(f"Running build command: {build_command}")
         os.chdir(repo_path)
-        process = subprocess.Popen(
-            build_command.split(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True
-        )
-        
-        # Capture and log output in real-time
-        while True:
-            output = process.stdout.readline()
-            error = process.stderr.readline()
-            
-            if output:
-                logging.info(f"Build output: {output.strip()}")
-            if error:
-                logging.error(f"Build error: {error.strip()}")
-            
-            # Check if process has finished
-            if output == '' and error == '' and process.poll() is not None:
-                break
-        
-        if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode, build_command)
+        subprocess.run(build_command.split(), check=True)
 
         # Start PM2 processes
         handle_pm2_processes(pm2_ids, "start")
